@@ -17,12 +17,14 @@ set BASE_DIR="%BUILD_DIR%external"
 set REVISION_DIR="%BUILD_DIR%external_revisions"
 set GLSLANG_DIR=%BASE_DIR%\glslang
 set SPIRV_TOOLS_DIR=%BASE_DIR%\spirv-tools
+set JSONCPP_DIR=%BASE_DIR%\jsoncpp
 
 REM // ======== Parameter parsing ======== //
 
    set arg-use-implicit-component-list=1
    set arg-do-glslang=0
    set arg-do-spirv-tools=0
+   set arg-do-jsoncpp=0
    set arg-no-sync=0
    set arg-no-build=0
 
@@ -62,11 +64,28 @@ REM // ======== Parameter parsing ======== //
          goto:parameterLoop
       )
 
+      if "%1" == "--jsoncpp" (
+         set arg-do-jsoncpp=1
+         set arg-use-implicit-component-list=0
+         echo Building jsoncpp ^(%1^)
+         shift
+         goto:parameterLoop
+      )
+
+      if "%1" == "-j" (
+         set arg-do-jsoncpp=1
+         set arg-use-implicit-component-list=0
+         echo Building jsoncpp ^(%1^)
+         shift
+         goto:parameterLoop
+      )
+
       if "%1" == "--all" (
          set arg-do-glslang=1
          set arg-do-spirv-tools=1
+         set arg-do-jsoncpp=1
          set arg-use-implicit-component-list=0
-         echo Building glslang, spirv-tools ^(%1^)
+         echo Building glslang, spirv-tools, jsoncpp ^(%1^)
          shift
          goto:parameterLoop
       )
@@ -93,9 +112,10 @@ REM // ======== Parameter parsing ======== //
       echo   Available options:
       echo     -g ^| --glslang      enable glslang component
       echo     -s ^| --spirv-tools  enable spirv-tools component
-      echo     --all               enable all components
-      echo     --no-sync           skip sync from git
-      echo     --no-build          skip build
+      echo     -j ^| --jsoncpp      enable jsoncpp component
+      echo     --all                enable all components
+      echo     --no-sync            skip sync from git
+      echo     --no-build           skip build
       echo.
       echo   If any component enables are provided, only those components are enabled.
       echo   If no component enables are provided, all components are enabled.
@@ -112,12 +132,15 @@ REM // ======== Parameter parsing ======== //
       echo Building glslang, spirv-tools
       set arg-do-glslang=1
       set arg-do-spirv-tools=1
+      set arg-do-jsoncpp=1
    )
 
    set sync-glslang=0
    set sync-spirv-tools=0
+   set sync-jsoncpp=0
    set build-glslang=0
    set build-spirv-tools=0
+   set build-jsoncpp=0
    set check-glslang-build-dependencies=0
 
    if %arg-do-glslang% equ 1 (
@@ -141,13 +164,24 @@ REM // ======== Parameter parsing ======== //
       )
    )
 
+   if %arg-do-jsoncpp% equ 1 (
+      if %arg-no-sync% equ 0 (
+         set sync-jsoncpp=1
+      )
+      if %arg-no-build% equ 0 (
+         set build-jsoncpp=1
+      )
+   )
+
    REM this is a debugging aid that can be enabled while debugging command-line parsing
    if 0 equ 1 (
       set arg
       set sync-glslang
       set sync-spirv-tools
+      set sync-jsoncpp
       set build-glslang
       set build-spirv-tools
+      set build-jsoncpp
       set check-glslang-build-dependencies
       goto:error
    )
@@ -230,12 +264,20 @@ if not exist %REVISION_DIR%\spirv-headers_revision (
    goto:error
 )
 
+if not exist %REVISION_DIR%\jsoncpp_revision (
+   echo.
+   echo Missing jsoncpp_revision file!  Place it in %REVISION_DIR% with target version in it.
+   set errorCode=1
+   goto:error
+)
+
 set /p GLSLANG_GITURL= < %REVISION_DIR%\glslang_giturl
 set /p GLSLANG_REVISION= < %REVISION_DIR%\glslang_revision
 set /p SPIRV_TOOLS_GITURL= < %REVISION_DIR%\spirv-tools_giturl
 set /p SPIRV_TOOLS_REVISION= < %REVISION_DIR%\spirv-tools_revision
 set /p SPIRV_HEADERS_GITURL= < %REVISION_DIR%\spirv-headers_giturl
 set /p SPIRV_HEADERS_REVISION= < %REVISION_DIR%\spirv-headers_revision
+set /p JSONCPP_REVISION= < %REVISION_DIR%\jsoncpp_revision
 
 echo GLSLANG_GITURL=%GLSLANG_GITURL%
 echo GLSLANG_REVISION=%GLSLANG_REVISION%
@@ -243,9 +285,9 @@ echo SPIRV_TOOLS_GITURL=%SPIRV_TOOLS_GITURL%
 echo SPIRV_TOOLS_REVISION=%SPIRV_TOOLS_REVISION%
 echo SPIRV_HEADERS_GITURL=%SPIRV_HEADERS_GITURL%
 echo SPIRV_HEADERS_REVISION=%SPIRV_HEADERS_REVISION%
+echo JSONCPP_REVISION=%JSONCPP_REVISION%
 
-
-echo Creating and/or updating glslang, spirv-tools in %BASE_DIR%
+echo Creating and/or updating glslang, spirv-tools, jsoncpp in %BASE_DIR%
 
 if %sync-glslang% equ 1 (
    if not exist %GLSLANG_DIR% (
@@ -266,6 +308,15 @@ if %sync-spirv-tools% equ 1 (
    if %errorCode% neq 0 (goto:error)
 )
 
+if %sync-jsoncpp% equ 1 (
+   if not exist %JSONCPP_DIR% (
+      call:create_jsoncpp
+   )
+   if %errorCode% neq 0 (goto:error)
+   call:update_jsoncpp
+   if %errorCode% neq 0 (goto:error)
+)
+
 if %build-glslang% equ 1 (
    call:build_glslang
    if %errorCode% neq 0 (goto:error)
@@ -273,6 +324,11 @@ if %build-glslang% equ 1 (
 
 if %build-spirv-tools% equ 1 (
    call:build_spirv-tools
+   if %errorCode% neq 0 (goto:error)
+)
+
+if %build-jsoncpp% equ 1 (
+   call:build_jsoncpp
    if %errorCode% neq 0 (goto:error)
 )
 
@@ -347,6 +403,27 @@ goto:eof
    git checkout %SPIRV_HEADERS_REVISION%
 goto:eof
 
+:create_jsoncpp
+   echo.
+   echo Creating local jsoncpp-tools repository %JSONCPP_DIR%)
+   mkdir %JSONCPP_DIR%
+   cd %JSONCPP_DIR%
+   git clone https://github.com/open-source-parsers/jsoncpp.git .
+   git checkout %JSONCPP_REVISION%
+   if not exist %JSONCPP_DIR%\include\json\json.h (
+      echo jsoncpp source download failed!
+      set errorCode=1
+   )
+goto:eof
+
+:update_jsoncpp
+   echo.
+   echo Updating %JSONCPP_DIR%
+   cd %JSONCPP_DIR%
+   git fetch --all
+   git checkout %JSONCPP_REVISION%
+goto:eof
+
 :build_glslang
    echo.
    echo Building %GLSLANG_DIR%
@@ -358,7 +435,7 @@ goto:eof
    if not exist build (
       mkdir build
    )
-
+   
    echo Making 32-bit glslang
    echo *************************
    set GLSLANG_BUILD_DIR=%GLSLANG_DIR%\build32
@@ -485,6 +562,20 @@ goto:eof
    if not exist %SPIRV_TOOLS_BUILD_DIR%\source\Release\SPIRV-Tools.lib (
       echo.
       echo spirv-tools 64-bit Release build failed!
+      set errorCode=1
+   )
+goto:eof
+
+REM Don't really build, just amalgamate the files into a single header
+:build_jsoncpp
+   echo.
+   echo Building %JSONCPP_DIR%
+   cd  %JSONCPP_DIR%
+   python amalgamate.py
+   
+   if not exist %JSONCPP_DIR%\dist\json\json.h (
+      echo.
+      echo JsonCPP Amalgamation failed to generate %JSONCPP_DIR%\dist\json\json.h
       set errorCode=1
    )
 goto:eof

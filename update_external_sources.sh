@@ -21,6 +21,7 @@ SPIRV_TOOLS_GITURL=$(cat "${REVISION_DIR}/spirv-tools_giturl")
 SPIRV_TOOLS_REVISION=$(cat "${REVISION_DIR}/spirv-tools_revision")
 SPIRV_HEADERS_GITURL=$(cat "${REVISION_DIR}/spirv-headers_giturl")
 SPIRV_HEADERS_REVISION=$(cat "${REVISION_DIR}/spirv-headers_revision")
+JSONCPP_REVISION=$(cat "${REVISION_DIR}/jsoncpp_revision")
 
 echo "GLSLANG_GITURL=${GLSLANG_GITURL}"
 echo "GLSLANG_REVISION=${GLSLANG_REVISION}"
@@ -28,6 +29,7 @@ echo "SPIRV_TOOLS_GITURL=${SPIRV_TOOLS_GITURL}"
 echo "SPIRV_TOOLS_REVISION=${SPIRV_TOOLS_REVISION}"
 echo "SPIRV_HEADERS_GITURL=${SPIRV_HEADERS_GITURL}"
 echo "SPIRV_HEADERS_REVISION=${SPIRV_HEADERS_REVISION}"
+echo "JSONCPP_REVISION=${JSONCPP_REVISION}"
 
 BUILDDIR=${CURRENT_DIR}
 BASEDIR="$BUILDDIR/external"
@@ -76,6 +78,21 @@ function update_spirv-tools () {
    fi
    git checkout ${SPIRV_HEADERS_REVISION}
 }
+function create_jsoncpp () {
+   rm -rf ${BASEDIR}/jsoncpp
+   echo "Creating local jsoncpp repository (${BASEDIR}/jsoncpp)."
+   mkdir -p ${BASEDIR}/jsoncpp
+   cd ${BASEDIR}/jsoncpp
+   git clone https://github.com/open-source-parsers/jsoncpp.git .
+   git checkout ${JSONCPP_REVISION}
+}
+
+function update_jsoncpp () {
+   echo "Updating ${BASEDIR}/jsoncpp"
+   cd ${BASEDIR}/jsoncpp
+   git fetch --all
+   git checkout ${JSONCPP_REVISION}
+}
 
 function build_glslang () {
    echo "Building ${BASEDIR}/glslang"
@@ -96,8 +113,15 @@ function build_spirv-tools () {
    make -j $CORE_COUNT
 }
 
+function build_jsoncpp () {
+   echo "Building ${BASEDIR}/jsoncpp"
+   cd ${BASEDIR}/jsoncpp
+   python amalgamate.py
+}
+
 INCLUDE_GLSLANG=false
 INCLUDE_SPIRV_TOOLS=false
+INCLUDE_JSONCPP=false
 NO_SYNC=false
 NO_BUILD=false
 USE_IMPLICIT_COMPONENT_LIST=true
@@ -113,6 +137,12 @@ do
       INCLUDE_GLSLANG=true
       USE_IMPLICIT_COMPONENT_LIST=false
       echo "Building glslang ($option)"
+      ;;
+      # options to specify build of jsoncpp components
+      -j|--jsoncpp)
+      INCLUDE_JSONCPP=true
+      USE_IMPLICIT_COMPONENT_LIST=false
+      echo "Building jsoncpp ($option)"
       ;;
       # options to specify build of spirv-tools components
       -s|--spirv-tools)
@@ -135,6 +165,7 @@ do
       echo "Usage: update_external_sources.sh [options]"
       echo "  Available options:"
       echo "    -g | --glslang      # enable glslang component"
+      echo "    -j | --jsoncpp      # enable jsoncpp"
       echo "    -s | --spirv-tools  # enable spirv-tools component"
       echo "    --no-sync           # skip sync from git"
       echo "    --no-build          # skip build"
@@ -152,6 +183,7 @@ if [ ${USE_IMPLICIT_COMPONENT_LIST} == "true" ]; then
   echo "Building glslang, spirv-tools"
   INCLUDE_GLSLANG=true
   INCLUDE_SPIRV_TOOLS=true
+  INCLUDE_JSONCPP=true
 fi
 
 if [ ${INCLUDE_GLSLANG} == "true" ]; then
@@ -166,7 +198,6 @@ if [ ${INCLUDE_GLSLANG} == "true" ]; then
   fi
 fi
 
-
 if [ ${INCLUDE_SPIRV_TOOLS} == "true" ]; then
   if [ ${NO_SYNC} == "false" ]; then
     if [ ! -d "${BASEDIR}/spirv-tools" -o ! -d "${BASEDIR}/spirv-tools/.git" ]; then
@@ -176,5 +207,17 @@ if [ ${INCLUDE_SPIRV_TOOLS} == "true" ]; then
   fi
   if [ ${NO_BUILD} == "false" ]; then
     build_spirv-tools
+  fi
+fi
+
+if [ ${INCLUDE_JSONCPP} == "true" ]; then
+  if [ ${NO_SYNC} == "false" ]; then
+    if [ ! -d "${BASEDIR}/jsoncpp" -o ! -d "${BASEDIR}/jsoncpp/.git" ]; then
+       create_jsoncpp
+    fi
+    update_jsoncpp
+  fi
+  if [ ${NO_BUILD} == "false" ]; then
+    build_jsoncpp
   fi
 fi

@@ -211,6 +211,20 @@ find_path(SPIRV_TOOLS_INCLUDE_DIR spirv-tools/libspirv.h HINTS "${EXTERNAL_SOURC
                                                    "${EXTERNAL_SOURCE_ROOT}/source/spirv-tools/external/include"
                                              DOC "Path to spirv-tools/libspirv.h")
 
+find_path(JSONCPP_INCLUDE_DIR json/json.h HINTS "${EXTERNAL_SOURCE_ROOT}/jsoncpp/dist"
+                                                   "${EXTERNAL_SOURCE_ROOT}/JsonCpp/dist"
+                                                   "${EXTERNAL_SOURCE_ROOT}/JsonCPP/dist"
+                                                   "${EXTERNAL_SOURCE_ROOT}/JSONCPP/dist"
+                                                   "${CMAKE_SOURCE_DIR}/../jsoncpp/dist"
+                                             DOC "Path to jsoncpp/dist/json/json.h")
+
+find_path(JSONCPP_SOURCE_DIR jsoncpp.cpp HINTS "${EXTERNAL_SOURCE_ROOT}/jsoncpp/dist"
+                                                   "${EXTERNAL_SOURCE_ROOT}/JsonCpp/dist"
+                                                   "${EXTERNAL_SOURCE_ROOT}/JsonCPP/dist"
+                                                   "${EXTERNAL_SOURCE_ROOT}/JSONCPP/dist"
+                                                   "${CMAKE_SOURCE_DIR}/../jsoncpp/dist"
+                                             DOC "Path to jsoncpp/dist/json.cpp")
+
 find_library(GLSLANG_LIB NAMES glslang
              HINTS ${GLSLANG_SEARCH_PATH} )
 
@@ -232,6 +246,9 @@ find_library(SPIRV_REMAPPER_LIB NAMES SPVRemapper
 find_library(SPIRV_TOOLS_LIB NAMES SPIRV-Tools
              HINTS ${SPIRV_TOOLS_SEARCH_PATH} )
 
+find_library(JSONCPP_LIB NAMES jsoncpp
+            HINTS ${JSONCPP_SEARCH_PATH} )
+
 if (WIN32)
     add_library(glslang     STATIC IMPORTED)
     add_library(OGLCompiler STATIC IMPORTED)
@@ -241,6 +258,7 @@ if (WIN32)
     add_library(SPVRemapper       STATIC IMPORTED)
     add_library(Loader      STATIC IMPORTED)
     add_library(SPIRV-Tools STATIC IMPORTED)
+    add_library(jsoncpp     STATIC IMPORTED)
 
     find_library(GLSLANG_DLIB NAMES glslangd
                  HINTS ${GLSLANG_DEBUG_SEARCH_PATH} )
@@ -256,6 +274,8 @@ if (WIN32)
                  HINTS ${GLSLANG_DEBUG_SEARCH_PATH} )
     find_library(SPIRV_TOOLS_DLIB NAMES SPIRV-Tools
                  HINTS ${SPIRV_TOOLS_DEBUG_SEARCH_PATH} )
+    find_library(JSONCPP_DLIB NAMES jsoncpp
+                 HINTS ${JSONCPP_DEBUG_SEARCH_PATH} )
 
     set_target_properties(glslang PROPERTIES
                          IMPORTED_LOCATION       "${GLSLANG_LIB}"
@@ -278,6 +298,9 @@ if (WIN32)
     set_target_properties(SPIRV-Tools PROPERTIES
                          IMPORTED_LOCATION       "${SPIRV_TOOLS_LIB}"
                          IMPORTED_LOCATION_DEBUG "${SPIRV_TOOLS_DLIB}")
+    set_target_properties(jsoncpp PROPERTIES
+                         IMPORTED_LOCATION       "${JSONCPP_LIB}"
+                         IMPORTED_LOCATION_DEBUG "${JSONCPP_DLIB}")
 
     set (GLSLANG_LIBRARIES glslang OGLCompiler OSDependent HLSL SPIRV SPVRemapper)
     set (SPIRV_TOOLS_LIBRARIES SPIRV-Tools)
@@ -420,6 +443,7 @@ if (BUILD_API_SAMPLES)
 endif()
 
 add_subdirectory(Sample-Programs/Hologram)
+add_subdirectory(Sample-Programs/LunarGravity)
 
 if (BUILD_SAMPLE_LAYERS)
     add_subdirectory(Layer-Samples/Overlay)
