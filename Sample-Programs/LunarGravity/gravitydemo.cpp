@@ -106,10 +106,6 @@ bool GravityDemo::Init(std::vector<std::string> &arguments) {
     return m_cur_scene->Start();
 }
 
-bool GravityDemo::Update(float comp_time, float game_time) {
-    return m_cur_scene->Update(comp_time, game_time);
-}
-
 bool GravityDemo::BeginDrawFrame() {
     if (!GravityEngine::BeginDrawFrame()) {
         return false;
@@ -117,11 +113,6 @@ bool GravityDemo::BeginDrawFrame() {
 
     // TODO: Demo specific BeginDrawFrame code
     return true;
-}
-
-bool GravityDemo::Draw() {
-    // Draw to the current command buffer
-    return m_cur_scene->Draw(m_graphics_cmd_buffer.vk_cmd_buf);
 }
 
 bool GravityDemo::EndDrawFrame() {

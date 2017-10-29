@@ -38,8 +38,6 @@ class GravityDemo : public GravityEngine {
     virtual void AppendUsageString(std::string &usage);
 
     virtual bool ProcessEvents();
-    virtual bool Update(float comp_time, float game_time);
     virtual bool BeginDrawFrame();
-    virtual bool Draw();
     virtual bool EndDrawFrame();
 };

@@ -1767,11 +1767,15 @@ void GravityEngine::Loop(void) {
     logger.LogInfo("GravityEngine::Loop engine loop finished");
 }
 
-bool GravityEngine::Update(float comp_time, float game_time) { return true; }
+bool GravityEngine::Update(float comp_time, float game_time) {
+    return m_cur_scene->Update(comp_time, game_time);
+}
 
 bool GravityEngine::BeginDrawFrame() { return true; }
 
-bool GravityEngine::Draw() { return true; }
+bool GravityEngine::Draw() {
+    return m_cur_scene->Draw(m_graphics_cmd_buffer.vk_cmd_buf);
+}
 
 bool GravityEngine::EndDrawFrame() {
     GravityLogger &logger = GravityLogger::getInstance();
